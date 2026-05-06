@@ -1,6 +1,6 @@
 ---
 name: coze-to-cloudflare
-description: Port a Coze platform workflow YAML to a Cloudflare Worker + Queue + D1 + Workflow + R2 async-task stack. Trigger whenever the user says "port this Coze workflow", "migrate Coze YAML", "coze 转 cloudflare", "coze workflow 移植/重写/迁移", "cloudflare workflow 实现", or points at a Coze YAML file for porting/rewriting. Even if the exact keywords are missing, if the task is clearly "reproduce a Coze workflow as a CF Workflow / Queue / D1 async task", load this skill. Also trigger if the user asks about any Coze node-to-step mapping, Coze model index mapping, or how to handle Coze subflows in Cloudflare Workflows.
+description: Use when porting, migrating, converting, or rewriting a Coze/扣子 workflow YAML to Cloudflare Workers, Queues, D1, Workflows, or R2; triggers include port Coze workflow, migrate Coze YAML, convert Coze to Cloudflare, coze2cf, coze 转 cloudflare, coze workflow 移植/重写/迁移, cloudflare workflow 实现, Coze node-to-step mapping, Coze model index mapping, and Coze subflows in Cloudflare Workflows.
 ---
 
 # Coze Workflow YAML → Cloudflare Workflow 移植指南
@@ -13,6 +13,50 @@ description: Port a Coze platform workflow YAML to a Cloudflare Worker + Queue +
 
 触发后，仍然先调用 `superpowers:brainstorming` 与用户对齐设计；本 skill 给你回答"该问哪些问题、Coze 节点该映射成什么、技术栈硬约束是什么"。
 
+## 前置条件
+
+- `<DB_BINDING>`：持久化任务状态和结果。
+- `<BUCKET_BINDING>`：存放图片、长文本或中间大对象。
+- `<QUEUE_BINDING>`：把 HTTP 请求转成轻量异步消息。
+- `<FEATURE>_WORKFLOW`：执行业务步骤的 Workflow binding。
+- 模型 registry：集中维护 Coze `model: <i>` 到实际模型 ID 的映射。
+
+如果项目缺少 Queue / Workflow / D1 / R2 中的关键 binding，先在 brainstorming 阶段决定替代架构；不要套用本文的完整异步栈。
+
+## 目标架构（通用骨架）
+
+```
+POST /your-endpoint
+  → 校验入参（400 on fail，不入队）
+  → 写 D1 任务记录（status="pending"）
+  → <QUEUE_BINDING>.send({ type: "<feature>", taskId, params })
+                    ↓
+            Queue Consumer
+  → <FEATURE>_WORKFLOW.create({ id: taskId, params })
+                    ↓
+            Workflow.run()
+  ├─ step: idempotency-check（读 D1，done 直接返回缓存 result）
+  ├─ step: [业务步骤，每个有副作用的操作单独一步]
+  ├─ step: save-result（写 D1 result，status="done"）
+  └─ error path: replay-safe write-error 或 Queue Consumer 兜底写 D1 error
+
+GET /tasks/:id → 只读 D1，返回 { status, result, ... }
+```
+
+Bindings（`<DB_BINDING>`、`<BUCKET_BINDING>`、`<QUEUE_BINDING>`、`<FEATURE>_WORKFLOW`）按你项目的命名约定填充。
+
+```ts
+export class FeatureWorkflow extends WorkflowEntrypoint<Bindings, Params> {
+  async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
+    // step.do(...) steps here
+  }
+}
+
+// Queue Consumer 伪代码
+// Replace FEATURE_WORKFLOW with your actual <FEATURE>_WORKFLOW binding name.
+await env.FEATURE_WORKFLOW.create({ id: taskId, params });
+```
+
 ## 触发后的工作流程
 
 ```
@@ -24,28 +68,6 @@ description: Port a Coze platform workflow YAML to a Cloudflare Worker + Queue +
 5. 用户审 spec → 调用 superpowers:writing-plans
 6. 实现交给 superpowers:subagent-driven-development 或 superpowers:executing-plans
 ```
-
-## 目标架构（通用骨架）
-
-```
-POST /your-endpoint
-  → 校验入参（400 on fail，不入队）
-  → 写 D1 任务记录（status="pending"）
-  → <TASK_QUEUE>.send({ type: "<feature>", taskId, params })
-                    ↓
-            Queue Consumer
-  → <FEATURE>_WORKFLOW.create({ id: taskId, params })
-                    ↓
-            Workflow.run()
-  ├─ step: idempotency-check（读 D1，done 直接返回缓存 result）
-  ├─ step: [业务步骤，每个有副作用的操作单独一步]
-  ├─ step: save-result（写 D1 result，status="done"）
-  └─ catch → step: write-error（status="error"）
-
-GET /tasks/:id → 只读 D1，返回 { status, result, ... }
-```
-
-Bindings（`<TASK_QUEUE>`、`<FEATURE>_WORKFLOW`、DB binding、R2 binding）按你项目的命名约定填充。
 
 ## Coze 节点 → 异步 step 映射（简表）
 
@@ -94,7 +116,10 @@ Coze YAML 里 `model: <i>` 用数字 index 引用模型（Coze 平台事实）�
 3. **`step.do` 边界 = 副作用**：D1 / R2 / LLM / 外部 API / 随机数消耗 → 放进 `step.do`；纯计算 → 普通函数，不分 step。
 4. **step 名字不要在 retry 间漂移**：Workflow replay 按 step 名读缓存，名字变了就会重跑该步骤——占位 step 也要保持固定的名字，为未来接入留出干净的升级路径。
 5. **Idempotency check 放在 run() 第一步**：读 D1，`status === "done"` 且 result 非空时直接返回缓存结果，避免重复执行。
-6. **LLM 调用包进 `step.do`**：让 step 的 retry 机制接管重试（如 `{ limit: 3, delay: "5 seconds", backoff: "exponential" }`），不依赖 SDK 级别的重试。
+6. **LLM 调用包进 `step.do`**：让 step 的 retry 机制接管重试（如 `{ retries: { limit: 3, delay: "5 seconds", backoff: "exponential" } }`），不依赖 SDK 级别的重试。
+7. **step 返回值保持小**：非 stream `step.do` 返回值必须小于 1 MiB；大对象写 R2/D1 外部存储，step 只返回 key 或摘要。
+
+Retry / timeout 配置格式以 Cloudflare Workflows 当前文档为准，版本间可能变化。
 
 ## Brainstorming 必问清单
 

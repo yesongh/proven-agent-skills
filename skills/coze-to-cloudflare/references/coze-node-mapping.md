@@ -2,6 +2,12 @@
 
 Coze workflow YAML 用一组节点（`nodes:`）描述数据流，每个节点由 `data.type` 区分类别。本文覆盖所有已观察到的节点类型，以及在 **Worker + Queue + D1 + Workflow + R2** 异步技术栈里的对应模式。
 
+## 目录
+
+- 通用节点结构
+- 节点类型表：`start` / `end`、`condition`、`code`、`text`、`llm`、`subflow`、`variable_merge`、`from_json`、`loop`、`parallel`、其它节点
+- 共性原则
+
 ## 通用节点结构
 
 ```yaml
@@ -21,6 +27,8 @@ Coze workflow YAML 用一组节点（`nodes:`）描述数据流，每个节点�
 ```
 
 每个节点都有 `inputs` 和 `outputs`，节点之间靠 `edges:` 里的 `sourceNodeID → targetNodeID` 连接。读 YAML 时第一件事：**把节点拓扑画成有向图**，再按下面表格分类。
+
+解析 YAML 时保留原始 node ID，构建 `sourceNodeID → targetNodeID` 边图，并检查不可达节点、重复边和多入口汇合点；不要只按 YAML 数组顺序推断执行顺序。
 
 ## 节点类型表
 
@@ -151,7 +159,7 @@ const merged = { ...branchA, ...branchB, extra };
 YAML 字段：可能是 `type: "13"`（JSON parser 节点）或 LLM 节点直接 `outputFormat: "object"`。
 
 - 尽量让 LLM 直接返回结构化对象（via 你项目的 structured output API），避免拿到字符串再 `JSON.parse`。
-- 如果必须解析，用 `JSON.parse(...)` 包在 try/catch 内，失败抛错让外层 workflow catch。
+- 如果必须解析，用 `JSON.parse(...)` 包在 try/catch 内；不可恢复的格式错误抛 `NonRetryableError`，避免 `step.do` 对终态错误做无效重试。
 
 ### `loop`（循环）
 
@@ -171,6 +179,8 @@ const results = await Promise.all(
 
 每次迭代里的 LLM 调用**各自一个 `step.do`**，名字带 index；否则 step 缓存会冲突，replay 时只有第一个 step 名有缓存。
 
+Index-based step 名只在迭代数组长度和顺序确定时安全；如果数组来自非确定性输出，先把该输出固定在上游 `step.do` 里。
+
 ### `parallel`（并行分支）
 
 YAML 字段：`type: "parallel"` 或多条边同时从一个节点出发。
@@ -186,6 +196,8 @@ const [resultA, resultB] = await Promise.all([
 
 ### 其它节点
 
+Coze tool / plugin 节点通常等价于外部 API 或工具调用：作为有副作用步骤放进 `step.do`，并在 brainstorming 时确认鉴权、超时、retry、幂等键和失败语义。
+
 如果遇到不在上面列表的 `data.type`，**brainstorming 时停下来对齐**：
 
 1. 它对应业务逻辑里的什么概念？
@@ -197,7 +209,8 @@ const [resultA, resultB] = await Promise.all([
 ## 共性原则
 
 - **`step.do` 的边界**：副作用（D1 / R2 / LLM / 外部 API / 随机数） = 一个 step；纯计算 = 普通函数，不分 step。
-- **每个 step 的 retry 策略**：LLM step 通常 `{ limit: 3, delay: "5 seconds", backoff: "exponential" }`；D1 写入 step 通常不 retry（让外层 catch 接住）。参考你项目里已有 Workflow 的写法保持一致。
-- **错误处理**：`run()` 顶层 try/catch，任何 step 抛错 → 写 D1 error 状态 → rethrow（让 Workflow 记录失败）。
+- **每个 step 的 retry 策略**：LLM step 通常 `{ retries: { limit: 3, delay: "5 seconds", backoff: "exponential" } }`；D1 写入 step 通常不 retry。配置格式以 Cloudflare Workflows 当前 API 为准。
+- **终态错误**：入参校验失败、鉴权失败、不可恢复的格式错误等应抛 `NonRetryableError`（从 `cloudflare:workflows` 导入），阻止 `step.do` 做无效重试。
+- **错误处理**：错误状态写入必须 replay-safe。可以在受控 `try/catch` 中用命名稳定的 `step.do("write-error", ...)` 做清理/落库后再决定是否 rethrow；也可以让 Workflow 失败，由 Queue Consumer 或启动方兜底写 D1 error。不要在 catch 里裸调用 D1 / R2 / 外部 API。
 - **Idempotency**：每个 Workflow 的第一个 step 是 idempotency check：读 D1，`status === "done"` 且 result 非空 → 直接返回缓存 result，不重跑。
 - **Usage / token 追踪**：每次 LLM 调用都收集 token 消耗，按你项目的 response 格式追加（如 `usages` 数组、按 node_id 标记），确保所有 LLM step 都有记录。
