@@ -1,0 +1,30 @@
+import { PACKAGE_VERSION } from './meta.mjs';
+
+const HELP = `Usage: {{name}} [command] [options]
+
+Commands:
+  (add your commands here)
+
+Options:
+  -v, --version   Show version
+  -h, --help      Show this help
+
+Examples:
+  {{name}} --help`.trim();
+
+export async function run(args) {
+  const [cmd] = args;
+
+  if (cmd === '--version' || cmd === '-v') {
+    process.stdout.write(PACKAGE_VERSION + '\n');
+    return;
+  }
+
+  if (!cmd || cmd === '--help' || cmd === '-h') {
+    process.stdout.write(HELP + '\n');
+    return;
+  }
+
+  process.stderr.write(`Unknown command: ${cmd}\nRun \`{{name}} --help\` to see available commands.\n`);
+  process.exit(1);
+}

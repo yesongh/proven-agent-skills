@@ -1,0 +1,48 @@
+# AGENTS
+
+This file is the canonical engineering source of truth for this repository.
+
+- For Codex: load this file first.
+- For Claude CLI and Gemini CLI: their tool-specific entry files only point here.
+
+## Project Summary
+
+{{description}}
+
+Package: `{{name}}`
+
+## TODO
+
+This is a Cloudflare Workers-based agent project. Complete the following before filling in the sections below:
+
+- [ ] Choose which Cloudflare services this agent uses:
+  - D1 (SQLite database)
+  - R2 (object storage)
+  - Queue (message queue / background jobs)
+  - AI Gateway (model routing + caching)
+  - Workflow (durable multi-step execution)
+  - Worker (compute entry point)
+- [ ] Define the worker entry point (`src/index.ts` or `src/worker.mjs`)
+- [ ] Configure `wrangler.toml` with bindings for each service
+- [ ] Fill in Runtime Architecture below with actual module structure
+- [ ] Fill in Non-Negotiable Invariants with domain constraints
+- [ ] Set up Cloudflare trusted publishing or CI/CD
+
+## Runtime Architecture
+
+(fill in after choosing Cloudflare services and defining module structure)
+
+## Non-Negotiable Invariants
+
+(fill in key behavioral constraints here)
+
+## Verification
+
+```bash
+npm test
+wrangler dev
+```
+
+## Change Rules
+
+- If behavior changes, update this file first or in the same change.
