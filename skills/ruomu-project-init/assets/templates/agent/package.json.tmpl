@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "echo \"No tests yet\" && exit 0"
+    "test": "echo \"No tests yet\" && exit 0",
+    "postinstall": "node scripts/setup-skills.mjs"
   },
   "devDependencies": {
     "wrangler": "^3.0.0"

@@ -41,15 +41,18 @@ The script walks `~/.claude/skills/ruomu-project-init/assets/templates/<type>/`,
 ## Step 4: After scaffold
 
 **For npm projects:**
-1. `cd <name> && npm install`
+1. `cd <name> && npm install` — also auto-creates `.claude/skills → .agents/skills` junction
 2. `npm test` — three smoke tests should pass immediately
 3. `gh repo create <owner>/<name> --public --source=. --push`
 4. First publish: follow `docs/npm-publish-sop.md` in the new project
 
-**For agent / website projects:** open `AGENTS.md` and work through the `## TODO` section.
+**For agent / website projects:**
+1. `cd <name> && npm install` — also auto-creates `.claude/skills → .agents/skills` junction
+2. Open `AGENTS.md` and work through the `## TODO` section.
 
 ## Notes
 
 - To add a file to a template, drop it into `~/.claude/skills/ruomu-project-init/assets/templates/<type>/`. Files with `{{var}}` placeholders should end in `.tmpl` (extension is stripped on output).
 - agent and website templates are placeholders in v0.1 — they'll be enriched in a later version.
 - Conventions reference: `~/.claude/skills/ruomu-project-init/references/conventions.md`.
+- **Shared skills convention:** project-specific skills go in `.agents/skills/<name>/SKILL.md`. The `postinstall` hook links `.claude/skills → .agents/skills` automatically (Windows: Junction, macOS/Linux: symlink), so Claude Code, Codex CLI, and Gemini CLI all discover the same skills from one source. `.claude/skills` is gitignored; `.agents/skills/` is committed.

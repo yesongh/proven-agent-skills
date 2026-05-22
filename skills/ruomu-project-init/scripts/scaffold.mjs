@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, copyFileSync, mkdirSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
@@ -95,6 +95,14 @@ for (const srcPath of walk(templateDir)) {
   process.stdout.write(`  create: ${outRel}\n`);
   count++;
 }
+
+// copy setup-skills.mjs (lives alongside this script, not in the template)
+const setupSrc = join(SKILL_DIR, 'scripts', 'setup-skills.mjs');
+const setupDest = join(target, 'scripts', 'setup-skills.mjs');
+mkdirSync(dirname(setupDest), { recursive: true });
+copyFileSync(setupSrc, setupDest);
+process.stdout.write(`  create: scripts/setup-skills.mjs\n`);
+count++;
 
 try {
   execSync('git init -q', { cwd: target });
