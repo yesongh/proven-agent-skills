@@ -282,6 +282,17 @@ artifacts:
         config.yaml rules and project instructions.
 
       ```
+
+
+      Under every `## N.` heading, insert an HTML comment meta block with
+      `schedule` (`parallel` | `barrier` | `sequential`) and `files` (list of
+      paths the group will touch). Order groups to maximize parallelism: put
+      truly independent groups as `parallel`, use `barrier` for shared-infra or
+      shared-file work that must drain prior groups and block the next, and use
+      `sequential` for groups that only need the immediately previous group's
+      output. The Wrap-up group is always `barrier`. The apply phase executes
+      groups in declared order — no runtime rescheduling, so ordering chosen
+      here is final. If a group lacks meta, apply treats it as `barrier`.
     requires:
       - specs
       - design
@@ -290,11 +301,19 @@ apply:
     - tasks
   tracks: tasks.md
   instruction: |
-    Read context files, then work through pending tasks using superpowers skills:
+    Each ## N. group in tasks.md carries an HTML comment meta block with `schedule`
+    and `files`. Execute groups in declared order:
+    - `parallel`: launch immediately, concurrent with whatever is in flight.
+    - `barrier`: wait for all in-flight groups to finish, run alone, wait for it to
+      finish, then continue.
+    - `sequential`: wait for the immediately previous group to finish, then launch
+      (concurrent with anything launched after it).
+    Drain all in-flight groups at the end. If a group lacks meta, treat it as `barrier`.
+    Dispatch each group as its own subagent following the executor rule in
+    `openspec/config.yaml` if present, otherwise use the built-in Task tool with a
+    `general-purpose` subagent.
 
-    Before starting implementation on any task group, invoke
-    superpowers:subagent-driven-development to identify which tasks can run in
-    parallel and dispatch independent work to subagents.
+    Read context files, then work through pending tasks using superpowers skills:
 
     For each task (or each subagent working on a task):
     - Invoke superpowers:test-driven-development BEFORE writing implementation code
