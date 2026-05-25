@@ -43,3 +43,15 @@ Never bump version for docs-only changes by default.
 ## CLI bin naming
 
 Single bin name = package name (`{{name}}`). If you want a short alias, add a second entry to `package.json` `bin`.
+
+## Common template overlay
+
+Files under `assets/templates/common/` are copied to every project type. `scaffold.mjs` walks `common/` first, then the type-specific directory, so a type-specific file of the same relative path takes precedence.
+
+Current common files:
+- `openspec/config.yaml.tmpl` — project openspec config with `schema: ruomu-spec-driven` and ROADMAP/wrap-up rules.
+- `docs/ROADMAP.md` — empty openspec change tracker, auto-updated by `opsx:propose` and Wrap-up tasks.
+
+## OpenSpec workflow default
+
+All scaffolded projects ship with the `ruomu-spec-driven` schema as their openspec default. The workflow is embedded in `AGENTS.md` (Workflows, Development Loop, Doc Update Map, OpenSpec Rules, Workspace Rules). `docs/superpowers/` is gitignored and used for local brainstorm/plan artifacts.

@@ -61,6 +61,7 @@ const vars = {
 
 const target = args.target;
 const templateDir = join(TEMPLATES_DIR, args.type);
+const commonDir = join(TEMPLATES_DIR, 'common');
 
 if (!existsSync(templateDir)) {
   process.stderr.write(`No template found for type "${args.type}".\n`);
@@ -79,22 +80,29 @@ if (!args.force) {
 
 process.stdout.write(`\nScaffolding ${args.type} project "${args.name}" → ${target}\n\n`);
 
-let count = 0;
-for (const srcPath of walk(templateDir)) {
-  const rel = relative(templateDir, srcPath);
-  const outRel = sub(rel.endsWith('.tmpl') ? rel.slice(0, -5) : rel, vars);
-  const destPath = join(target, outRel);
+function processTemplateDir(srcDir) {
+  let count = 0;
+  for (const srcPath of walk(srcDir)) {
+    const rel = relative(srcDir, srcPath);
+    const outRel = sub(rel.endsWith('.tmpl') ? rel.slice(0, -5) : rel, vars);
+    const destPath = join(target, outRel);
 
-  if (!args.force && existsSync(destPath) && readFileSync(destPath, 'utf8').trim()) {
-    process.stdout.write(`  skip: ${outRel}\n`);
-    continue;
+    if (!args.force && existsSync(destPath) && readFileSync(destPath, 'utf8').trim()) {
+      process.stdout.write(`  skip: ${outRel}\n`);
+      continue;
+    }
+
+    mkdirSync(dirname(destPath), { recursive: true });
+    writeFileSync(destPath, sub(readFileSync(srcPath, 'utf8'), vars));
+    process.stdout.write(`  create: ${outRel}\n`);
+    count++;
   }
-
-  mkdirSync(dirname(destPath), { recursive: true });
-  writeFileSync(destPath, sub(readFileSync(srcPath, 'utf8'), vars));
-  process.stdout.write(`  create: ${outRel}\n`);
-  count++;
+  return count;
 }
+
+let count = 0;
+if (existsSync(commonDir)) count += processTemplateDir(commonDir);
+count += processTemplateDir(templateDir);
 
 // copy setup-skills.mjs (lives alongside this script, not in the template)
 const setupSrc = join(SKILL_DIR, 'scripts', 'setup-skills.mjs');

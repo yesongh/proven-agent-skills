@@ -53,6 +53,12 @@ The script walks `~/.claude/skills/ruomu-project-init/assets/templates/<type>/`,
 ## Notes
 
 - To add a file to a template, drop it into `~/.claude/skills/ruomu-project-init/assets/templates/<type>/`. Files with `{{var}}` placeholders should end in `.tmpl` (extension is stripped on output).
+- To add a file to **all** project types, drop it in `assets/templates/common/`. The scaffolder walks `common/` first, then the type-specific directory (type-specific files override common ones).
 - agent and website templates are placeholders in v0.1 — they'll be enriched in a later version.
 - Conventions reference: `~/.claude/skills/ruomu-project-init/references/conventions.md`.
 - **Shared skills convention:** project-specific skills go in `.agents/skills/<name>/SKILL.md`. The `postinstall` hook links `.claude/skills → .agents/skills` automatically (Windows: Junction, macOS/Linux: symlink), so Claude Code, Codex CLI, and Gemini CLI all discover the same skills from one source. `.claude/skills` is gitignored; `.agents/skills/` is committed.
+- **OpenSpec + superpowers workflow baked in:** every scaffolded project ships with:
+  - `openspec/config.yaml` — schema is `ruomu-spec-driven`. Fill in the `context:` block (tech stack, storage, domain, conventions) before the first `/opsx:propose`.
+  - `docs/ROADMAP.md` — tracks openspec changes; auto-updated by the proposal and Wrap-up rules in `openspec/config.yaml`.
+  - Workflow Contract in `AGENTS.md` (Workflows, Development Loop, Doc Update Map, OpenSpec Rules, Workspace Rules).
+  - `docs/superpowers/` is gitignored — use it for local brainstorm specs and implementation plans generated during development.

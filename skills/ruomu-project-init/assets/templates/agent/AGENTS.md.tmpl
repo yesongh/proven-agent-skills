@@ -11,6 +11,49 @@ This file is the canonical engineering source of truth for this repository.
 
 Package: `{{name}}`
 
+## Workflows
+
+- **Standalone dev**: brainstorming → writing-plans → test-driven-development → verification-before-completion. For independent implementation tasks, dispatch each to a Task subagent in parallel.
+- **Standalone debug**: systematic-debugging → verification-before-completion.
+- **OpenSpec-driven**: (optional brainstorming if intent is vague) → `/opsx:propose <description>` → `/opsx:apply <name>` → `/opsx:archive <name>`. tasks.md declares group-level parallel meta; `opsx:apply` executes groups in declared order per the schema's apply instruction. Brainstorming does not auto-bridge to opsx — if you ended up in writing-plans but wanted an openspec change, cancel and run `/opsx:propose` manually.
+
+## Development Loop
+
+A single feature cycle in order:
+
+1. **Brainstorm / propose** → `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` (local)
+2. **Write implementation plan** → `docs/superpowers/plans/YYYY-MM-DD-<topic>.md` (local)
+3. **Implement + unit tests**
+4. **Run acceptance tests** — must pass before commit
+5. **Update committed docs** using the Doc Update Map below
+6. **Commit / PR**
+
+## Doc Update Map
+
+Before each commit, check which of these was touched and update the corresponding doc. If none match, no doc update needed.
+
+| Change type | Update |
+|---|---|
+| New or changed business message / route payload | relevant message/API doc |
+| New or changed infrastructure binding / config | relevant infra doc + regenerate types |
+| New or renamed top-level source file responsibility | architecture/file map doc |
+| Platform layer, state model, or core rule change | architecture doc |
+| New log signal, runbook, or incident playbook | `docs/runbooks/` |
+| Business behavior / capability requirement change | New OpenSpec change via `opsx:propose`; do not edit `openspec/specs/` directly |
+| New cross-file contract not inferable from code | `AGENTS.md` Highest Principles |
+| Agent-generated plan / spec / review | `docs/superpowers/` (local, not committed) |
+| OpenSpec change proposed or completed | `docs/ROADMAP.md` (add ○ row on propose; update to ✓ on apply Wrap-up) |
+
+## OpenSpec Rules
+
+- `openspec/specs/` is written only by `openspec archive`. Never write there directly.
+- Business behavior / capability requirement changes go through `opsx:propose`, not direct edits.
+
+## Workspace Rules
+
+- If using a worktree, treat the main workspace as read-only unless the user explicitly asks otherwise.
+- Do not revert user changes. Work with existing dirty files or leave unrelated changes untouched.
+
 ## TODO
 
 This is a Cloudflare Workers-based agent project. Complete the following before filling in the sections below:
