@@ -309,13 +309,13 @@ apply:
     - `sequential`: wait for the immediately previous group to finish, then launch
       (concurrent with anything launched after it).
     Drain all in-flight groups at the end. If a group lacks meta, treat it as `barrier`.
-    Dispatch each group as its own subagent following the executor rule in
-    `openspec/config.yaml` if present, otherwise use the built-in Task tool with a
-    `general-purpose` subagent.
+    NEVER implement tasks directly — dispatch each group as its own subagent.
+    Check `openspec/config.yaml` for the executor rule; default to Agent tool
+    with subagent_type `general-purpose`. Main agent role: orchestrate only.
 
     Read context files, then work through pending tasks using superpowers skills:
 
-    For each task (or each subagent working on a task):
+    For each task (or each subagent working on task):
     - Invoke superpowers:test-driven-development BEFORE writing implementation code
     - Invoke superpowers:systematic-debugging if blocked or a test fails unexpectedly
     - Invoke superpowers:verification-before-completion BEFORE marking a task done

@@ -6,7 +6,7 @@ context: |
   Tech stack: 
   Domain:
   Conventions: conventional commits; see AGENTS.md for repo invariants and Highest Principles
-  
+
 rules:
   proposal:
     - "After creating proposal.md, insert a new row into docs/ROADMAP.md above the bottom comment line: | `<change-name>` | ○ | <YYYY-MM-DD> | — | where <change-name> is the exact openspec change directory name and <YYYY-MM-DD> is today's date."
@@ -16,4 +16,4 @@ rules:
     - "Wrap-up must update docs/ROADMAP.md: find this story's row by the backtick-quoted change name in the 'Change' column, change ○ to ✓ in the Status column, and fill in today's date in the Done column."
     - "Wrap-up must commit with a descriptive message referencing the completed task numbers."
   apply:
-    - "Subagent executor: default to the built-in Task tool with a general-purpose subagent. If the user's /opsx:apply invocation mentions codex or codex:rescue in any phrasing (e.g., 'executor: codex', '用 codex 来执行', 'use codex:rescue'), interpret that as intent to switch and dispatch each task group as a codex:rescue subagent instead."
+    - "NEVER implement tasks directly in the main agent. Each task group MUST be dispatched as its own subagent via the Agent tool. Default subagent_type: 'general-purpose'. Use 'codex:codex-rescue' only when the /opsx:apply invocation explicitly requests codex (e.g., 'executor: codex', '用 codex 执行')."
