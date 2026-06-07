@@ -1,7 +1,0 @@
-interface:
-  display_name: "Project MCP"
-  short_description: "Manage project-scoped MCP config for Claude Code, Gemini CLI, and Codex CLI."
-  default_prompt: "Use $project-mcp to install or remove a project-scoped MCP server for Claude Code, Gemini CLI, or Codex CLI without touching global config."
-
-policy:
-  allow_implicit_invocation: true
