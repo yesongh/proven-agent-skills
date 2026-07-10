@@ -309,6 +309,18 @@ apply:
     - `sequential`: wait for the immediately previous group to finish, then launch
       (concurrent with anything launched after it).
     Drain all in-flight groups at the end. If a group lacks meta, treat it as `barrier`.
+    Barrier groups run alone in the main workspace. Concurrent groups are
+    dispatched with Agent `isolation: worktree` and self-commit on their own
+    branch; as each lands, cherry-pick it onto the working branch (groups
+    declare disjoint files; a pick that conflicts only on tasks.md checkbox
+    lines keeps both sides). After the Wrap-up group lands, the orchestrator
+    removes all worktrees and force-deletes their branches (cherry-pick
+    rewrites SHAs, so `git branch -d` would refuse).
+    A group is done only when a commit referencing its task numbers exists and
+    its checkboxes are flipped — never trust the subagent's report. If a
+    dispatch ends without its commit, resume the same agent to commit; if that
+    fails, re-dispatch the group once; the orchestrator committing on its
+    behalf is a last resort.
     NEVER implement tasks directly — dispatch each group as its own subagent.
     Check `openspec/config.yaml` for the executor rule; default to Agent tool
     with subagent_type `general-purpose`. Main agent role: orchestrate only.
