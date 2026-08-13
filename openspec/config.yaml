@@ -18,3 +18,4 @@ rules:
     - "Wrap-up must commit with a descriptive message referencing the completed task numbers."
   apply:
     - "Executor: default subagent_type 'general-purpose'. When the invocation mentions codex ('codex', 'codex:rescue', '用 codex 执行'), use 'codex:rescue' for barrier groups only; concurrent groups stay 'general-purpose' to preserve parallelism (codex shares one runtime and would serialize). Only an explicit 'codex only' / '全部用 codex' forces codex everywhere, accepting serialization. State the per-group executor assignment before dispatching."
+    - "Worktree baseline: every concurrent group must start from the commit the orchestrator dispatched from. Each dispatch verifies and resets its baseline before starting; the orchestrator confirms each landed branch descends from that commit (`git merge-base --is-ancestor`) before merging."
